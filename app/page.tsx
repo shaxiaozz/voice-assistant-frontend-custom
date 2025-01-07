@@ -61,6 +61,34 @@ export default function Page() {
     updateConnectionDetails(connectionDetailsData);
   }, [selectedAssistant]);
 
+  // 处理WebSocket连接成功后的逻辑
+  const handleRoomConnected = useCallback(async () => {
+    if (!connectionDetails) return;
+
+    try {
+      // 创建API路由来处理agent dispatch
+      const response = await fetch('/api/create-dispatch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomName: connectionDetails.roomName,
+          agentName: connectionDetails.agentName,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create dispatch');
+      }
+
+      const data = await response.json();
+      console.log('Created dispatch:', data);
+    } catch (error) {
+      console.error('Error creating dispatch:', error);
+    }
+  }, [connectionDetails]);
+
   return (
     <main
       data-lk-theme="default"
@@ -72,6 +100,7 @@ export default function Page() {
         connect={connectionDetails !== undefined}
         audio={true}
         video={false}
+        onConnected={handleRoomConnected}
         onMediaDeviceFailure={onDeviceFailure}
         onDisconnected={() => {
           updateConnectionDetails(undefined);
@@ -162,10 +191,10 @@ function SimpleVoiceAssistant(props: {
     </div>
   );
 }
-
 function onDeviceFailure(error?: MediaDeviceFailure) {
   console.error(error);
   alert(
     "Error acquiring camera or microphone permissions. Please make sure you grant the necessary permissions in your browser and reload the tab"
   );
 }
+

@@ -1,6 +1,5 @@
 import {
   AccessToken,
-  VideoGrant,
 } from "livekit-server-sdk";
 import { RoomAgentDispatch, RoomConfiguration } from '@livekit/protocol';
 import { NextResponse } from "next/server";
@@ -60,31 +59,44 @@ export async function GET(request: Request) {
 
 async function createTokenWithAgentDispatch(identity: string, roomName: string, agentName: string): Promise<string> {
   const at = new AccessToken(API_KEY, API_SECRET, {
-    identity,
+    identity: identity,
     ttl: "15m",
   });
 
-  const grant: VideoGrant = {
+  // 添加房间权限
+  at.addGrant({
     room: roomName,
     roomJoin: true,
     canPublish: true,
     canPublishData: true,
     canSubscribe: true,
-  };
-  at.addGrant(grant);
+  });
 
-  // 确保正确设置了 agentName 和 metadata
-  const agentDispatchConfig = {
-    agentName: agentName,
-    metadata: JSON.stringify({ agentName: agentName }),
-  };
-
-  console.log('Creating token with agent dispatch:', agentDispatchConfig);
-
-  at.roomConfig = new RoomConfiguration({
+  // 设置RoomConfiguration
+  const roomConfig = new RoomConfiguration({
+    name: roomName,
+    emptyTimeout: 300,
+    maxParticipants: 2,
     agents: [
-      new RoomAgentDispatch(agentDispatchConfig),
+      new RoomAgentDispatch({
+        agentName: agentName,
+        metadata: JSON.stringify({
+          type: 'voice_assistant',
+          role: agentName,
+          version: '1.0'
+        }),
+      }),
     ],
+  });
+
+  at.roomConfig = roomConfig;
+
+  // 添加调试日志
+  console.log('Room configuration:', {
+    name: roomName,
+    identity: identity,
+    agentName: agentName,
+    config: roomConfig
   });
 
   return at.toJwt();
